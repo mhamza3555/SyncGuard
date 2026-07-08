@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchRecords, fetchSyncHistory, triggerSync, getToken, clearToken } from "./lib/api";
+import { fetchRecords, fetchSyncHistory, triggerSync, askQuestion, getToken, clearToken } from "./lib/api";
 
 type Record = {
   id: number;
@@ -24,6 +24,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
+
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [sqlUsed, setSqlUsed] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState("");
 
   useEffect(() => {
     const token = getToken();
@@ -61,6 +67,24 @@ export default function Dashboard() {
     }
   };
 
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) return;
+    setAsking(true);
+    setAskError("");
+    setAnswer("");
+    setSqlUsed("");
+    try {
+      const result = await askQuestion(question);
+      setAnswer(result.answer);
+      setSqlUsed(result.sql || "");
+    } catch (err: any) {
+      setAskError(err.message || "Something went wrong");
+    } finally {
+      setAsking(false);
+    }
+  };
+
   const handleLogout = () => {
     clearToken();
     router.push("/login");
@@ -75,9 +99,18 @@ export default function Dashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white p-8">
+    <main className="min-h-screen bg-[#0A0E14] text-[#E8ECF1] p-8">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(240, 180, 41, 0.15); }
+          50% { box-shadow: 0 0 0 8px rgba(240, 180, 41, 0); }
+        }
+        .ai-card { animation: glow-pulse 3s ease-in-out infinite; }
+      `}</style>
+
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">SyncGuard Dashboard</h1>
+        <h1 className="font-['Space_Grotesk'] text-3xl font-bold">SyncGuard Dashboard</h1>
         <button
           onClick={handleLogout}
           className="text-sm text-gray-400 hover:text-white border border-gray-800 px-3 py-1.5 rounded"
@@ -94,7 +127,7 @@ export default function Dashboard() {
         {loading ? "Syncing..." : "Sync Now"}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
           <p className="text-gray-400 text-sm mb-1">Connector</p>
           <p className="text-xl font-semibold">GitHub</p>
@@ -110,6 +143,54 @@ export default function Dashboard() {
             {syncHistory[0] ? new Date(syncHistory[0].started_at).toLocaleString() : "Never"}
           </p>
         </div>
+      </div>
+
+      {/* AI Q&A — highlighted section */}
+      <div className="ai-card bg-gradient-to-br from-[#1a1508] to-[#12171F] border border-[#F0B429]/30 rounded-xl p-6 mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-2 h-2 rounded-full bg-[#F0B429]" />
+          <p className="font-['JetBrains_Mono'] text-xs tracking-widest text-[#F0B429] uppercase">
+            ai insights
+          </p>
+        </div>
+
+        <form onSubmit={handleAsk} className="flex gap-3">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask something about your data — e.g. how many issues are open?"
+            className="flex-1 bg-[#12171F] border border-[#232B36] rounded-md px-4 py-2.5 text-sm outline-none focus:border-[#F0B429] focus:ring-1 focus:ring-[#F0B429] transition-colors placeholder:text-[#4A5568]"
+          />
+          <button
+            type="submit"
+            disabled={asking}
+            className="bg-[#F0B429] hover:bg-[#e0a51f] text-[#0A0E14] font-semibold px-5 py-2.5 rounded-md transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            {asking ? "Thinking..." : "Ask"}
+          </button>
+        </form>
+
+        {askError && (
+          <p className="font-['JetBrains_Mono'] text-xs text-[#F87171] mt-4">{askError}</p>
+        )}
+
+        {answer && (
+          <div className="mt-5 pt-5 border-t border-[#232B36]">
+            <p className="text-[#E8ECF1] leading-relaxed">{answer}</p>
+            {sqlUsed && (
+              <details className="mt-3 group">
+                <summary className="font-['JetBrains_Mono'] text-xs text-[#7C8798] hover:text-[#F0B429] cursor-pointer transition-colors list-none flex items-center gap-1">
+                  <span className="group-open:rotate-90 transition-transform inline-block">›</span>
+                  view query
+                </summary>
+                <p className="font-['JetBrains_Mono'] text-xs text-[#7C8798] mt-2 break-all pl-3 border-l border-[#232B36]">
+                  {sqlUsed}
+                </p>
+              </details>
+            )}
+          </div>
+        )}
       </div>
 
       <section className="mb-10">
