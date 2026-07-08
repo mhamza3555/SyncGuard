@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone
+from ai_insights import ask_question
 
 from github_client import get_issues
 from normalize import normalize_issue, compute_hash
@@ -146,3 +147,8 @@ def get_records(db: Session = Depends(get_db), current_user: dict = Depends(get_
 def get_sync_history(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     runs = db.query(SyncRun).order_by(SyncRun.started_at.desc()).all()
     return [{"id": r.id, "status": r.status, "records_changed": r.records_changed, "started_at": r.started_at} for r in runs]
+
+@app.post("/ask")
+def ask(question: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    result = ask_question(question, db)
+    return result
