@@ -58,6 +58,24 @@ export default function Dashboard() {
         {loading ? "Syncing..." : "Sync Now"}
       </button>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+          <p className="text-gray-400 text-sm mb-1">Connector</p>
+          <p className="text-xl font-semibold">GitHub</p>
+          <p className="text-green-400 text-sm mt-2">● Connected</p>
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+          <p className="text-gray-400 text-sm mb-1">Total Records</p>
+          <p className="text-xl font-semibold">{records.length}</p>
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+          <p className="text-gray-400 text-sm mb-1">Last Sync</p>
+          <p className="text-xl font-semibold">
+            {syncHistory[0] ? new Date(syncHistory[0].started_at).toLocaleString() : "Never"}
+          </p>
+        </div>
+      </div>
+
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-3">Sync History</h2>
         <table className="w-full text-left border-collapse">

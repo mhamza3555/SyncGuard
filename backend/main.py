@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone
@@ -6,11 +8,10 @@ from datetime import datetime, timezone
 from github_client import get_issues
 from normalize import normalize_issue, compute_hash
 from database import get_db, engine, Base
-from models import Connector, SyncRun, Record, RecordChange
+from models import Connector, SyncRun, Record, RecordChange, User
+from auth import hash_password, verify_password, create_access_token
 
 app = FastAPI()
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +26,28 @@ Base.metadata.create_all(bind=engine)
 @app.get("/")
 def read_root():
     return {"message": "SyncGuard backend is alive"}
+
+@app.post("/register")
+def register(email: str, password: str, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    new_user = User(email=email, hashed_password=hash_password(password))
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {"message": "User registered successfully", "user_id": new_user.id}
+
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+    token = create_access_token({"sub": user.email, "user_id": user.id})
+    return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/issues/{owner}/{repo}")
 def fetch_issues(owner: str, repo: str):

@@ -36,3 +36,10 @@ class RecordChange(Base):
     sync_run_id = Column(Integer, ForeignKey("sync_runs.id"))
     change_type = Column(String)
     changed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
