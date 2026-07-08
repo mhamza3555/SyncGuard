@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { fetchRecords, fetchSyncHistory, triggerSync, getToken, clearToken } from "./lib/api";
 
 type Record = {
   id: number;
@@ -20,38 +22,72 @@ export default function Dashboard() {
   const [records, setRecords] = useState<Record[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchData = async () => {
-    setLoading(true);
-    const recordsRes = await fetch("http://127.0.0.1:8000/records");
-    const recordsData = await recordsRes.json();
-    setRecords(recordsData);
-
-    const historyRes = await fetch("http://127.0.0.1:8000/sync-history");
-    const historyData = await historyRes.json();
-    setSyncHistory(historyData);
-
-    setLoading(false);
-  };
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setCheckingAuth(false);
     fetchData();
   }, []);
 
-  const triggerSync = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    await fetch("http://127.0.0.1:8000/sync/octocat/Hello-World", {
-      method: "POST",
-    });
-    await fetchData();
+    try {
+      const [recordsData, historyData] = await Promise.all([
+        fetchRecords(),
+        fetchSyncHistory(),
+      ]);
+      setRecords(recordsData);
+      setSyncHistory(historyData);
+    } catch (err) {
+      router.push("/login");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSync = async () => {
+    setLoading(true);
+    try {
+      await triggerSync("octocat", "Hello-World");
+      await fetchData();
+    } catch (err) {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearToken();
+    router.push("/login");
+  };
+
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <p className="text-gray-400">Checking session...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
-      <h1 className="text-3xl font-bold mb-6">SyncGuard Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">SyncGuard Dashboard</h1>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-gray-400 hover:text-white border border-gray-800 px-3 py-1.5 rounded"
+        >
+          Log Out
+        </button>
+      </div>
 
       <button
-        onClick={triggerSync}
+        onClick={handleSync}
         disabled={loading}
         className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mb-8 disabled:opacity-50"
       >

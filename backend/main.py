@@ -9,8 +9,7 @@ from github_client import get_issues
 from normalize import normalize_issue, compute_hash
 from database import get_db, engine, Base
 from models import Connector, SyncRun, Record, RecordChange, User
-from auth import hash_password, verify_password, create_access_token
-
+from auth import hash_password, verify_password, create_access_token, get_current_user
 app = FastAPI()
 
 app.add_middleware(
@@ -57,7 +56,7 @@ def fetch_issues(owner: str, repo: str):
     return {"count": len(issues), "issues": issues}
 
 @app.post("/sync/{owner}/{repo}")
-def sync_repo(owner: str, repo: str, db: Session = Depends(get_db)):
+def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     connector = db.query(Connector).filter(Connector.name == "GitHub").first()
     if connector is None:
         connector = Connector(name="GitHub", status="connected")
@@ -139,11 +138,11 @@ def sync_repo(owner: str, repo: str, db: Session = Depends(get_db)):
     }
 
 @app.get("/records")
-def get_records(db: Session = Depends(get_db)):
+def get_records(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     records = db.query(Record).all()
     return [{"id": r.id, "title": r.title, "status": r.status, "owner": r.owner} for r in records]
 
 @app.get("/sync-history")
-def get_sync_history(db: Session = Depends(get_db)):
+def get_sync_history(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     runs = db.query(SyncRun).order_by(SyncRun.started_at.desc()).all()
     return [{"id": r.id, "status": r.status, "records_changed": r.records_changed, "started_at": r.started_at} for r in runs]
