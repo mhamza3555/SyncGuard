@@ -68,13 +68,12 @@ export default function Dashboard() {
   const handleSync = async () => {
     setLoading(true);
     try {
-      await triggerSync("octocat", "Hello-World");
+      await triggerSync("octocat");
       await fetchData();
     } catch (err) {
       setLoading(false);
     }
-  };
-
+};
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim()) return;
