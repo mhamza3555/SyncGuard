@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchRecords, fetchSyncHistory, triggerSync, askQuestion, getToken, clearToken } from "./lib/api";
+import { fetchRecords, fetchSyncHistory, fetchActivity, triggerSync, askQuestion, getToken, clearToken } from "./lib/api";
 
 type Record = {
   id: number;
@@ -18,9 +18,15 @@ type SyncRun = {
   started_at: string;
 };
 
+type Activity = {
+  owner: string;
+  record_count: number;
+};
+
 export default function Dashboard() {
   const [records, setRecords] = useState<Record[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
@@ -44,12 +50,14 @@ export default function Dashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [recordsData, historyData] = await Promise.all([
+      const [recordsData, historyData, activityData] = await Promise.all([
         fetchRecords(),
         fetchSyncHistory(),
+        fetchActivity(),
       ]);
       setRecords(recordsData);
       setSyncHistory(historyData);
+      setActivity(activityData);
     } catch (err) {
       router.push("/login");
     } finally {
@@ -98,6 +106,8 @@ export default function Dashboard() {
     );
   }
 
+  const maxCount = activity[0]?.record_count || 1;
+
   return (
     <main className="min-h-screen bg-[#0A0E14] text-[#E8ECF1] p-8">
       <style>{`
@@ -107,6 +117,7 @@ export default function Dashboard() {
           50% { box-shadow: 0 0 0 8px rgba(240, 180, 41, 0); }
         }
         .ai-card { animation: glow-pulse 3s ease-in-out infinite; }
+        .bar-fill { transition: width 0.6s ease-out; }
       `}</style>
 
       <div className="flex justify-between items-center mb-6">
@@ -145,8 +156,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* AI Q&A — highlighted section */}
-      <div className="ai-card bg-gradient-to-br from-[#1a1508] to-[#12171F] border border-[#F0B429]/30 rounded-xl p-6 mb-10">
+      {/* AI Q&A */}
+      <div className="ai-card bg-gradient-to-br from-[#1a1508] to-[#12171F] border border-[#F0B429]/30 rounded-xl p-6 mb-8">
         <div className="flex items-center gap-2 mb-4">
           <span className="w-2 h-2 rounded-full bg-[#F0B429]" />
           <p className="font-['JetBrains_Mono'] text-xs tracking-widest text-[#F0B429] uppercase">
@@ -191,6 +202,26 @@ export default function Dashboard() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Top Activity leaderboard */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-10">
+        <h2 className="text-xl font-semibold mb-4">Top Activity</h2>
+        <div className="space-y-3">
+          {activity.map((a, i) => (
+            <div key={a.owner} className="flex items-center gap-3">
+              <span className="text-gray-500 text-sm w-5">{i + 1}</span>
+              <span className="text-sm w-40 truncate">{a.owner}</span>
+              <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bar-fill bg-[#F0B429] h-full rounded-full"
+                  style={{ width: `${(a.record_count / maxCount) * 100}%` }}
+                />
+              </div>
+              <span className="text-sm text-gray-400 w-8 text-right">{a.record_count}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <section className="mb-10">
