@@ -4,12 +4,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone
-from ai_insights import ask_question, summarize_sync
-from github_client import get_issues
+
+from github_client import get_issues, get_org_repos
 from normalize import normalize_issue, compute_hash
 from database import get_db, engine, Base
 from models import Connector, SyncRun, Record, RecordChange, User
 from auth import hash_password, verify_password, create_access_token, get_current_user
+from ai_insights import ask_question, summarize_sync
+
 app = FastAPI()
 
 app.add_middleware(
@@ -55,8 +57,8 @@ def fetch_issues(owner: str, repo: str):
         return {"error": "Could not fetch issues"}
     return {"count": len(issues), "issues": issues}
 
-@app.post("/sync/{owner}/{repo}")
-def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def run_sync(owner: str, repo: str, db: Session) -> dict:
+    """Reusable sync logic for a single repo. Used by both single-repo and org-wide sync."""
     connector = db.query(Connector).filter(Connector.name == "GitHub").first()
     if connector is None:
         connector = Connector(name="GitHub", status="connected")
@@ -74,7 +76,7 @@ def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user
         sync_run.status = "failed"
         sync_run.finished_at = datetime.now(timezone.utc)
         db.commit()
-        return {"error": "Failed to fetch from GitHub"}
+        return {"error": f"Failed to fetch from GitHub for {owner}/{repo}", "repo": repo}
 
     changes_count = 0
 
@@ -134,11 +136,43 @@ def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user
     summary = summarize_sync(changes_count, len(raw_issues))
 
     return {
+        "repo": repo,
         "sync_run_id": sync_run.id,
         "records_changed": changes_count,
         "total_fetched": len(raw_issues),
         "summary": summary
     }
+
+@app.post("/sync/{owner}/{repo}")
+def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    return run_sync(owner, repo, db)
+
+@app.post("/sync-org/{org}")
+def sync_org(org: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Syncs every repo under a GitHub organization, one by one."""
+    repos = get_org_repos(org)
+    if repos is None:
+        raise HTTPException(status_code=400, detail=f"Could not fetch repos for org '{org}'")
+
+    results = []
+    total_changed = 0
+    total_fetched = 0
+
+    for repo_data in repos:
+        repo_name = repo_data["name"]
+        result = run_sync(org, repo_name, db)
+        results.append(result)
+        total_changed += result.get("records_changed", 0)
+        total_fetched += result.get("total_fetched", 0)
+
+    return {
+        "organization": org,
+        "repos_synced": len(results),
+        "total_records_changed": total_changed,
+        "total_fetched": total_fetched,
+        "details": results
+    }
+
 @app.get("/records")
 def get_records(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     records = db.query(Record).all()
@@ -148,6 +182,18 @@ def get_records(db: Session = Depends(get_db), current_user: dict = Depends(get_
 def get_sync_history(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     runs = db.query(SyncRun).order_by(SyncRun.started_at.desc()).all()
     return [{"id": r.id, "status": r.status, "records_changed": r.records_changed, "started_at": r.started_at} for r in runs]
+
+@app.get("/activity")
+def get_activity(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Groups records by owner — shows who's associated with the most activity."""
+    results = (
+        db.query(Record.owner, func.count(Record.id).label("record_count"))
+        .group_by(Record.owner)
+        .order_by(func.count(Record.id).desc())
+        .limit(10)
+        .all()
+    )
+    return [{"owner": r[0], "record_count": r[1]} for r in results]
 
 @app.post("/ask")
 def ask(question: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
