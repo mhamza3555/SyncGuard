@@ -4,8 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone
-from ai_insights import ask_question
-
+from ai_insights import ask_question, summarize_sync
 from github_client import get_issues
 from normalize import normalize_issue, compute_hash
 from database import get_db, engine, Base
@@ -132,12 +131,14 @@ def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user
     connector.last_synced_at = datetime.now(timezone.utc)
     db.commit()
 
+    summary = summarize_sync(changes_count, len(raw_issues))
+
     return {
         "sync_run_id": sync_run.id,
         "records_changed": changes_count,
-        "total_fetched": len(raw_issues)
+        "total_fetched": len(raw_issues),
+        "summary": summary
     }
-
 @app.get("/records")
 def get_records(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     records = db.query(Record).all()

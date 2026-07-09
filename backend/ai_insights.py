@@ -55,3 +55,16 @@ Write a short, clear, one-to-two sentence answer in plain English based on this 
     answer_response = model.generate_content(answer_prompt)
 
     return {"answer": answer_response.text.strip(), "sql": sql_query}
+
+def summarize_sync(records_changed: int, total_fetched: int) -> str:
+    if records_changed == 0:
+        return "No changes detected — everything is already up to date."
+
+    prompt = f"""A sync just ran on a GitHub connector.
+Total issues fetched: {total_fetched}
+Records changed (new or updated): {records_changed}
+
+Write ONE short, friendly sentence summarizing this sync for a dashboard. Keep it under 20 words."""
+
+    response = model.generate_content(prompt)
+    return response.text.strip()
