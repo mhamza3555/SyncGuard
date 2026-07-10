@@ -71,3 +71,38 @@ Write ONE short, friendly sentence summarizing this sync for a dashboard. Keep i
         return response.text.strip()
     except Exception:
         return f"Synced {total_fetched} issues, {records_changed} changed."
+
+def detect_anomaly(records_changed: int, recent_runs: list) -> dict:
+    """
+    Compares this sync's records_changed against the average of recent syncs.
+    Flags it if it's unusually high or low.
+    """
+    if len(recent_runs) < 3:
+        # Not enough history yet to judge what's "normal"
+        return {"is_anomaly": False, "explanation": None}
+
+    average = sum(r.records_changed for r in recent_runs) / len(recent_runs)
+
+    # Flag if this run is more than 2x the average, or way lower than expected
+    is_anomaly = False
+    if average > 0 and records_changed > average * 2:
+        is_anomaly = True
+    elif average > 5 and records_changed == 0:
+        is_anomaly = True
+
+    if not is_anomaly:
+        return {"is_anomaly": False, "explanation": None}
+
+    try:
+        prompt = f"""A GitHub sync just completed.
+This sync changed {records_changed} records.
+The average of the last {len(recent_runs)} syncs was {average:.1f} records changed.
+
+In ONE short sentence, explain why this sync's activity looks unusual compared to normal, in plain English for a non-technical dashboard viewer."""
+
+        response = model.generate_content(prompt)
+        explanation = response.text.strip()
+    except Exception:
+        explanation = f"This sync changed {records_changed} records, compared to a recent average of {average:.1f}."
+
+    return {"is_anomaly": True, "explanation": explanation}

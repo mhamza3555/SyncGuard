@@ -10,7 +10,7 @@ from normalize import normalize_issue, compute_hash
 from database import get_db, engine, Base
 from models import Connector, SyncRun, Record, RecordChange, User
 from auth import hash_password, verify_password, create_access_token, get_current_user
-from ai_insights import ask_question, summarize_sync
+from ai_insights import ask_question, summarize_sync, detect_anomaly
 
 app = FastAPI()
 
@@ -135,14 +135,23 @@ def run_sync(owner: str, repo: str, db: Session) -> dict:
 
     summary = summarize_sync(changes_count, len(raw_issues))
 
+    recent_runs = (
+        db.query(SyncRun)
+        .filter(SyncRun.id != sync_run.id, SyncRun.status == "success")
+        .order_by(SyncRun.started_at.desc())
+        .limit(10)
+        .all()
+    )
+    anomaly = detect_anomaly(changes_count, recent_runs)
+
     return {
         "repo": repo,
         "sync_run_id": sync_run.id,
         "records_changed": changes_count,
         "total_fetched": len(raw_issues),
-        "summary": summary
+        "summary": summary,
+        "anomaly": anomaly
     }
-
 @app.post("/sync/{owner}/{repo}")
 def sync_repo(owner: str, repo: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     return run_sync(owner, repo, db)
