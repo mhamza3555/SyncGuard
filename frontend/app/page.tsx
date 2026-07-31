@@ -23,10 +23,16 @@ type Activity = {
   record_count: number;
 };
 
+type Anomaly = {
+  repo: string;
+  explanation: string;
+};
+
 export default function Dashboard() {
   const [records, setRecords] = useState<Record[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
@@ -67,13 +73,21 @@ export default function Dashboard() {
 
   const handleSync = async () => {
     setLoading(true);
+    setAnomalies([]);
     try {
-      await triggerSync("octocat");
+      const result = await triggerSync("octocat");
+
+      const detected: Anomaly[] = (result.details || [])
+        .filter((d: any) => d.anomaly?.is_anomaly)
+        .map((d: any) => ({ repo: d.repo, explanation: d.anomaly.explanation }));
+
+      setAnomalies(detected);
       await fetchData();
     } catch (err) {
       setLoading(false);
     }
-};
+  };
+
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim()) return;
@@ -117,6 +131,11 @@ export default function Dashboard() {
         }
         .ai-card { animation: glow-pulse 3s ease-in-out infinite; }
         .bar-fill { transition: width 0.6s ease-out; }
+        @keyframes slide-in {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .anomaly-banner { animation: slide-in 0.3s ease-out; }
       `}</style>
 
       <div className="flex justify-between items-center mb-6">
@@ -132,10 +151,29 @@ export default function Dashboard() {
       <button
         onClick={handleSync}
         disabled={loading}
-        className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mb-8 disabled:opacity-50"
+        className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mb-6 disabled:opacity-50"
       >
         {loading ? "Syncing..." : "Sync Now"}
       </button>
+
+      {anomalies.length > 0 && (
+        <div className="space-y-2 mb-8">
+          {anomalies.map((a, i) => (
+            <div
+              key={i}
+              className="anomaly-banner bg-[#2A1215] border border-[#F87171]/40 rounded-lg px-4 py-3 flex items-start gap-3"
+            >
+              <span className="text-[#F87171] mt-0.5">⚠</span>
+              <div>
+                <p className="font-['JetBrains_Mono'] text-xs text-[#F87171] uppercase tracking-wide mb-1">
+                  anomaly detected — {a.repo}
+                </p>
+                <p className="text-sm text-[#E8ECF1]">{a.explanation}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
@@ -155,7 +193,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* AI Q&A */}
       <div className="ai-card bg-gradient-to-br from-[#1a1508] to-[#12171F] border border-[#F0B429]/30 rounded-xl p-6 mb-8">
         <div className="flex items-center gap-2 mb-4">
           <span className="w-2 h-2 rounded-full bg-[#F0B429]" />
@@ -203,7 +240,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Top Activity leaderboard */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-10">
         <h2 className="text-xl font-semibold mb-4">Top Activity</h2>
         <div className="space-y-3">
