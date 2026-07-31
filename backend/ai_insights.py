@@ -83,13 +83,10 @@ def detect_anomaly(records_changed: int, recent_runs: list) -> dict:
 
     average = sum(r.records_changed for r in recent_runs) / len(recent_runs)
 
-    # Flag if this run is more than 2x the average, or way lower than expected
     is_anomaly = False
+    
     if average > 0 and records_changed > average * 2:
         is_anomaly = True
-    elif average > 5 and records_changed == 0:
-        is_anomaly = True
-
     if not is_anomaly:
         return {"is_anomaly": False, "explanation": None}
 

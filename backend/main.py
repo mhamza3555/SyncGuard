@@ -4,11 +4,18 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone
-
+from email_service import send_failure_alert, send_anomaly_alert
 from github_client import get_issues, get_org_repos
 from normalize import normalize_issue, compute_hash
 from database import get_db, engine, Base
-from models import Connector, SyncRun, Record, RecordChange, User
+from models import (
+    Connector,
+    SyncRun,
+    Record,
+    RecordChange,
+    User,
+    Notification,
+)
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from ai_insights import ask_question, summarize_sync, detect_anomaly
 
@@ -72,11 +79,27 @@ def run_sync(owner: str, repo: str, db: Session) -> dict:
     db.refresh(sync_run)
 
     raw_issues = get_issues(owner, repo)
+
     if raw_issues is None:
+        # Mark sync as failed
         sync_run.status = "failed"
         sync_run.finished_at = datetime.now(timezone.utc)
         db.commit()
-        return {"error": f"Failed to fetch from GitHub for {owner}/{repo}", "repo": repo}
+
+        # Send email notification (don't let email failures crash the sync)
+        try:
+            send_failure_alert(
+                connector="GitHub",
+                repository=f"{owner}/{repo}",
+                reason="GitHub API request failed. The connector could not retrieve issues."
+            )
+        except Exception as e:
+            print(f"Failed to send failure alert email: {e}")
+
+        return {
+            "error": f"Failed to fetch from GitHub for {owner}/{repo}",
+            "repo": repo
+        }
 
     changes_count = 0
 
@@ -143,6 +166,16 @@ def run_sync(owner: str, repo: str, db: Session) -> dict:
         .all()
     )
     anomaly = detect_anomaly(changes_count, recent_runs)
+    if anomaly["is_anomaly"]:
+        try:
+            send_anomaly_alert(
+                connector="GitHub",
+                repository=f"{owner}/{repo}",
+                records_changed=changes_count,
+                explanation=anomaly["explanation"],
+            )
+        except Exception as e:
+            print(f"Failed to send anomaly alert email: {e}")
 
     return {
         "repo": repo,
