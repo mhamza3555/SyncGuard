@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from email_service import send_failure_alert, send_anomaly_alert
 from github_client import get_issues, get_org_repos
 from normalize import normalize_issue, compute_hash
+from notification_service import create_notification
 from database import get_db, engine, Base
 from models import (
     Connector,
@@ -85,8 +86,15 @@ def run_sync(owner: str, repo: str, db: Session) -> dict:
         sync_run.status = "failed"
         sync_run.finished_at = datetime.now(timezone.utc)
         db.commit()
+        create_notification(
+            db=db,
+            notification_type="failure",
+            severity="critical",
+            title=f"GitHub sync failed ({repo})",
+            message="GitHub API request failed. The connector could not retrieve issues.",
+            repository=repo,
+        )
 
-        # Send email notification (don't let email failures crash the sync)
         try:
             send_failure_alert(
                 connector="GitHub",
@@ -166,7 +174,18 @@ def run_sync(owner: str, repo: str, db: Session) -> dict:
         .all()
     )
     anomaly = detect_anomaly(changes_count, recent_runs)
+
     if anomaly["is_anomaly"]:
+
+        create_notification(
+            db=db,
+            notification_type="anomaly",
+            severity="warning",
+            title=f"Unusual activity detected in {repo}",
+            message=anomaly["explanation"],
+            repository=repo,
+        )
+
         try:
             send_anomaly_alert(
                 connector="GitHub",
