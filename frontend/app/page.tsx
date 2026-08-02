@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchRecords, fetchSyncHistory, fetchActivity, triggerSync, askQuestion, getToken, clearToken } from "./lib/api";
+import {
+  fetchRecords,
+  fetchSyncHistory,
+  fetchActivity,
+  triggerSync,
+  askQuestion,
+  getToken,
+  clearToken,
+  fetchNotifications,
+} from "./lib/api";
+
 
 type Record = {
   id: number;
@@ -28,6 +38,14 @@ type Anomaly = {
   explanation: string;
 };
 
+type Notification = {
+  id: number;
+  title: string;
+  message: string;
+  severity: string;
+};
+
+
 export default function Dashboard() {
   const [records, setRecords] = useState<Record[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
@@ -42,6 +60,9 @@ export default function Dashboard() {
   const [sqlUsed, setSqlUsed] = useState("");
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -55,15 +76,24 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     setLoading(true);
+
     try {
-      const [recordsData, historyData, activityData] = await Promise.all([
+      const [
+        recordsData,
+        historyData,
+        activityData,
+        notificationsData,
+      ] = await Promise.all([
         fetchRecords(),
         fetchSyncHistory(),
         fetchActivity(),
+        fetchNotifications(),
       ]);
+
       setRecords(recordsData);
       setSyncHistory(historyData);
       setActivity(activityData);
+      setNotifications(notificationsData);
     } catch (err) {
       router.push("/login");
     } finally {
@@ -138,16 +168,97 @@ export default function Dashboard() {
         .anomaly-banner { animation: slide-in 0.3s ease-out; }
       `}</style>
 
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-['Space_Grotesk'] text-3xl font-bold">SyncGuard Dashboard</h1>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-gray-400 hover:text-white border border-gray-800 px-3 py-1.5 rounded"
-        >
-          Log Out
-        </button>
-      </div>
+        <div className="flex justify-between items-center mb-6">
 
+            <h1 className="font-['Space_Grotesk'] text-3xl font-bold">
+                SyncGuard Dashboard
+            </h1>
+
+            <div className="flex items-center gap-4">
+
+                <div className="relative" ref={notificationRef}>
+
+                    <button
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="relative border border-gray-800 rounded-lg p-2 hover:bg-gray-900 transition"
+                    >
+                        🔔
+
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full px-1.5">
+                        {notifications.length}
+                    </span>
+                    </button>
+
+                    {showNotifications && (
+                        <div className="absolute right-0 mt-2 w-96 bg-[#12171F] border border-[#232B36] rounded-xl shadow-xl z-50">
+
+                            <div className="px-4 py-3 border-b border-[#232B36] font-semibold">
+                                Notifications
+                            </div>
+
+                        <div className="max-h-96 overflow-y-auto">
+
+                            {notifications.length === 0 ? (
+
+                                <div className="p-4 text-gray-400 text-sm">
+                                    No notifications 🎉
+                                </div>
+
+                            ) : (
+
+                                notifications.map((notification) => (
+
+                                    <div
+                                        key={notification.id}
+                                        className="border-b border-[#232B36] p-4 hover:bg-[#1A202C] transition"
+                                    >
+
+                                        <div className="flex items-center justify-between">
+
+                                            <span className="font-medium">
+                                                {notification.title}
+                                            </span>
+
+                                            <span
+                                                className={`text-xs px-2 py-1 rounded ${
+                                                    notification.severity === "critical"
+                                                        ? "bg-red-600 text-white"
+                                                        : notification.severity === "warning"
+                                                        ? "bg-yellow-600 text-black"
+                                                        : "bg-green-600 text-white"
+                                                }`}
+                                            >
+                                                {notification.severity}
+                                            </span>
+
+                                        </div>
+
+                                        <p className="text-sm text-gray-400 mt-2">
+                                            {notification.message}
+                                        </p>
+
+                                    </div>
+
+                                ))
+
+                            )}
+
+                        </div>
+                        </div>
+                    )}
+
+                </div>
+
+                <button
+                    onClick={handleLogout}
+                    className="text-sm text-gray-400 hover:text-white border border-gray-800 px-3 py-1.5 rounded"
+                >
+                    Log Out
+                </button>
+
+            </div>
+
+        </div>
       <button
         onClick={handleSync}
         disabled={loading}
