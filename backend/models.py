@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.sql import func
 from database import Base
 
@@ -47,13 +47,15 @@ class User(Base):
 class Notification(Base):
     __tablename__ = "notifications"
 
-    id = Column(Integer, primary_key=True, index=True)
-    type = Column(String, nullable=False)
-    severity = Column(String, nullable=False)
-    title = Column(String, nullable=False)
-    message = Column(String, nullable=False)
-    repository = Column(String, nullable=True)
-    is_read = Column(String, default="false")
+    id = Column(Integer, primary_key=True)
+    type = Column(String)
+    severity = Column(String)
+    title = Column(String)
+    message = Column(Text)
+    created_at = Column(DateTime)
+    is_read = Column(Boolean, default=False)
+
+
 
     created_at = Column(
         DateTime(timezone=True),

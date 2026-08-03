@@ -41,12 +41,33 @@ def get_notifications(
             "severity": n.severity,
             "title": n.title,
             "message": n.message,
-            "repository": n.repository,
             "is_read": n.is_read,
             "created_at": n.created_at,
         }
         for n in notifications
     ]
+
+
+@app.post("/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    notification = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id)
+        .first()
+    )
+
+    if notification is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    notification.is_read = True
+    db.commit()
+
+    return {"message": "Notification marked as read"}
+
 
 app.add_middleware(
     CORSMiddleware,

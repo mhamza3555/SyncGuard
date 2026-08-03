@@ -11,6 +11,7 @@ import {
   getToken,
   clearToken,
   fetchNotifications,
+  markNotificationRead,
 } from "./lib/api";
 
 
@@ -43,6 +44,7 @@ type Notification = {
   title: string;
   message: string;
   severity: string;
+  is_read: boolean;
 };
 
 
@@ -150,6 +152,24 @@ export default function Dashboard() {
   }
 
   const maxCount = activity[0]?.record_count || 1;
+  const handleNotificationClick = async (id: number) => {
+  try {
+      await markNotificationRead(id);
+
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id
+            ? {
+                ...n,
+                is_read: true,
+              }
+            : n
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#0A0E14] text-[#E8ECF1] p-8">
@@ -185,7 +205,7 @@ export default function Dashboard() {
                         🔔
 
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full px-1.5">
-                        {notifications.length}
+                        {notifications.filter((n) => !n.is_read).length}
                     </span>
                     </button>
 

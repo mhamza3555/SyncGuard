@@ -10,12 +10,15 @@ def create_notification(
     message: str,
     repository: str | None = None,
 ):
+    # Include the repository name in the title instead of storing it
+    if repository:
+        title = f"{title} ({repository})"
+
     notification = Notification(
         type=notification_type,
         severity=severity,
         title=title,
         message=message,
-        repository=repository,
     )
 
     db.add(notification)
