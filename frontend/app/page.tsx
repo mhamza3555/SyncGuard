@@ -41,12 +41,13 @@ type Anomaly = {
 
 type Notification = {
   id: number;
+  type: string;
+  severity: string;
   title: string;
   message: string;
-  severity: string;
   is_read: boolean;
+  created_at: string;
 };
-
 
 export default function Dashboard() {
   const [records, setRecords] = useState<Record[]>([]);
@@ -190,10 +191,15 @@ export default function Dashboard() {
 
         <div className="flex justify-between items-center mb-6">
 
-            <h1 className="font-['Space_Grotesk'] text-3xl font-bold">
-                SyncGuard Dashboard
-            </h1>
+        <div>
+          <h1 className="font-['Space_Grotesk'] text-3xl font-bold">
+            SyncGuard
+          </h1>
 
+          <p className="font-['Space_Grotesk'] text-1 font-bold">
+            Monitor. Detect. Recover.
+          </p>
+        </div>
             <div className="flex items-center gap-4">
 
                 <div className="relative" ref={notificationRef}>
@@ -235,10 +241,21 @@ export default function Dashboard() {
 
                                         <div className="flex items-center justify-between">
 
-                                            <span className="font-medium">
-                                                {notification.title}
-                                            </span>
+                                            <div className="flex items-center gap-2">
 
+                                                <span>
+                                                    {notification.severity === "critical"
+                                                        ? "🚨"
+                                                        : notification.severity === "warning"
+                                                        ? "⚠️"
+                                                        : "✅"}
+                                                </span>
+
+                                                <span className="font-medium">
+                                                    {notification.title}
+                                                </span>
+
+                                            </div>
                                             <span
                                                 className={`text-xs px-2 py-1 rounded ${
                                                     notification.severity === "critical"
@@ -255,6 +272,13 @@ export default function Dashboard() {
 
                                         <p className="text-sm text-gray-400 mt-2">
                                             {notification.message}
+                                        </p>
+                                        <p className="text-sm text-gray-400 mt-2">
+                                            {notification.message}
+                                        </p>
+
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            {new Date(notification.created_at).toLocaleString()}
                                         </p>
 
                                     </div>
@@ -287,24 +311,6 @@ export default function Dashboard() {
         {loading ? "Syncing..." : "Sync Now"}
       </button>
 
-      {anomalies.length > 0 && (
-        <div className="space-y-2 mb-8">
-          {anomalies.map((a, i) => (
-            <div
-              key={i}
-              className="anomaly-banner bg-[#2A1215] border border-[#F87171]/40 rounded-lg px-4 py-3 flex items-start gap-3"
-            >
-              <span className="text-[#F87171] mt-0.5">⚠</span>
-              <div>
-                <p className="font-['JetBrains_Mono'] text-xs text-[#F87171] uppercase tracking-wide mb-1">
-                  anomaly detected — {a.repo}
-                </p>
-                <p className="text-sm text-[#E8ECF1]">{a.explanation}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">

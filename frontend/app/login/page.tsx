@@ -73,9 +73,9 @@ export default function LoginPage() {
           <p className="font-['JetBrains_Mono'] text-xs tracking-widest text-[#7C8798] uppercase mb-3">
             connector status: <span className="text-[#34D399]">live</span>
           </p>
-          <h1 className="font-['Space_Grotesk'] text-3xl font-bold text-center px-10 leading-tight">
-            SyncGuard
-          </h1>
+          <p className="font-['JetBrains_Mono'] text-sm text-[#7C8798] mt-3 text-center px-14">
+            Monitor. Detect. Recover.
+          </p>
           <p className="font-['JetBrains_Mono'] text-sm text-[#7C8798] mt-3 text-center px-14">
             Watching your connectors, one delta at a time.
           </p>
