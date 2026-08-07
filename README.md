@@ -1,33 +1,230 @@
 # SyncGuard
 
-An AI-augmented connector health dashboard that monitors an organization's GitHub activity — built to mirror how enterprise identity/access governance tools (like those integrating with Salesforce, Workday, or SAP) track and normalize data across connected systems.
+An AI-powered GitHub monitoring and synchronization platform that helps organizations monitor repository activity, detect changes, generate AI-powered insights, and track synchronization history through a secure web dashboard.
 
-## The model
+**Live Demo:** https://sync-guard-mu.vercel.app/
 
-SyncGuard is designed as a **company-wide monitoring tool**, not a personal per-user tool. One GitHub organization is connected as the data source; any authenticated team member can log in to view sync activity, ask questions about the data, and monitor connector health — similar to how tools like Datadog or Splunk work: everyone views the same shared, centrally-monitored system, with login controlling access rather than data ownership.
+---
 
-## What it does
+## Overview
 
-- **Authenticated GitHub connector** — pulls issue/repo data via OAuth2-style token authentication, respecting GitHub's API rate limits
-- **Multi-repo organization sync** — syncs every repository under a GitHub org or user account in a single operation
-- **Normalization layer** — converts GitHub's raw API responses into a clean, unified internal schema (designed to extend to other systems like Salesforce/Workday later)
-- **Delta detection** — uses content hashing to detect and log only genuine changes between syncs, avoiding redundant writes and unnecessary API usage
-- **JWT-authenticated dashboard** — real user accounts, hashed passwords, protected API routes
-- **AI natural language Q&A** — ask questions about your synced data in plain English; Gemini generates a safe, read-only SQL query, executes it, and explains the result conversationally
-- **AI-generated sync summaries** — every sync produces a short, human-readable summary automatically
-- **Activity leaderboard** — surfaces who's most active across the organization's tracked repos, at a glance
+SyncGuard was built to simulate how enterprise connector monitoring platforms manage and monitor external systems. Instead of monitoring services like Salesforce or Workday, SyncGuard connects to GitHub and provides a centralized dashboard where authenticated team members can monitor repository activity, synchronize project data, receive notifications, and interact with their data using Artificial Intelligence.
 
-## Tech stack
+Unlike a personal dashboard, SyncGuard follows a shared monitoring model where all authenticated users view the same synchronized organizational data, making it suitable for team-wide repository monitoring.
 
-**Backend:** FastAPI, PostgreSQL, SQLAlchemy, JWT (python-jose), bcrypt (passlib)
-**Frontend:** Next.js, React, TypeScript, Tailwind CSS
-**AI:** Google Gemini API (schema-grounded SQL generation + natural language summarization)
-**Planned:** Docker, AWS EC2, AWS Secrets Manager, AWS SES
+---
 
-## Architecture
+# Features
 
-GitHub API → FastAPI backend (auth, normalization, delta detection) → PostgreSQL → Next.js dashboard, with a Gemini-powered AI layer reasoning over the normalized data for Q&A and summarization.
+- Secure JWT-based user authentication
+- GitHub repository synchronization using GitHub REST API
+- Organization-wide multi-repository monitoring
+- Repository normalization into a unified internal schema
+- Delta detection using content hashing to identify only meaningful changes
+- Synchronization history tracking
+- AI-powered repository summaries
+- Natural language querying using Google Gemini AI
+- Repository anomaly detection
+- Activity leaderboard across repositories
+- Dashboard notifications
+- Automated email alerts using AWS SES
+- Production deployment using Railway and Vercel
 
-## Status
+---
 
-Actively in development. Core sync engine, authentication, and AI layer are complete and functional. Docker containerization and AWS deployment are in progress.
+# System Workflow
+
+```
+                User
+                  │
+                  ▼
+        Next.js Web Dashboard
+                  │
+                  ▼
+        FastAPI REST Backend
+                  │
+        ┌─────────┼─────────┐
+        ▼         ▼         ▼
+ GitHub API   PostgreSQL   Gemini AI
+        │         │         │
+        └─────────┼─────────┘
+                  ▼
+      AI Insights & Dashboard
+                  │
+                  ▼
+         AWS SES Email Alerts
+```
+
+---
+
+# How It Works
+
+1. Users authenticate using JWT authentication.
+
+2. A synchronization request fetches repository data through the GitHub API.
+
+3. Repository data is normalized into a consistent internal format.
+
+4. Newly synchronized data is compared with existing records using hashing to detect:
+
+- New records
+- Updated records
+- Deleted records
+
+5. Only meaningful changes are stored while preserving synchronization history.
+
+6. Google Gemini AI analyzes synchronized data to:
+
+- Generate repository summaries
+- Answer natural language questions
+- Detect unusual repository activity
+
+7. Notifications are created inside the dashboard and email alerts are sent when failures or anomalies are detected.
+
+---
+
+# Technology Stack
+
+## Frontend
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+## Backend
+
+- FastAPI
+- SQLAlchemy
+- JWT Authentication
+- bcrypt (Passlib)
+- REST APIs
+
+## Database
+
+- PostgreSQL (Neon)
+
+## Artificial Intelligence
+
+- Google Gemini API
+- Natural Language to SQL
+- AI Repository Summaries
+- AI Question Answering
+
+## External Integrations
+
+- GitHub REST API
+- AWS Simple Email Service (SES)
+
+## Deployment
+
+- Railway (Backend)
+- Vercel (Frontend)
+
+---
+
+# Core Components
+
+## Authentication
+
+Implements secure JWT authentication with hashed passwords and protected API endpoints.
+
+---
+
+## Synchronization Engine
+
+Synchronizes GitHub repositories while maintaining synchronization history and detecting meaningful changes between executions.
+
+---
+
+## Normalization Layer
+
+Converts raw GitHub API responses into a consistent internal schema designed for future expansion to additional connectors.
+
+---
+
+## AI Layer
+
+Google Gemini enables users to ask questions about synchronized repository data using natural language. The system generates safe SQL queries, retrieves relevant information, and returns conversational responses.
+
+---
+
+## Notification System
+
+Generates dashboard notifications and sends automated email alerts whenever synchronization failures or anomalies are detected.
+
+---
+
+# Skills Demonstrated
+
+This project demonstrates practical experience with:
+
+- Full-Stack Development
+- Backend API Development
+- Authentication & Authorization
+- Database Design
+- ORM (SQLAlchemy)
+- REST API Design
+- GitHub API Integration
+- Artificial Intelligence Integration
+- Natural Language Processing
+- Cloud Deployment
+- Environment Variable Management
+- CORS Configuration
+- Email Automation
+- Production Debugging
+- Version Control with Git & GitHub
+
+---
+
+# Project Structure
+
+```
+SyncGuard
+│
+├── backend/
+│   ├── auth.py
+│   ├── database.py
+│   ├── github_client.py
+│   ├── ai_insights.py
+│   ├── notification_service.py
+│   ├── models.py
+│   └── main.py
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   └── public/
+│
+└── README.md
+```
+
+---
+
+# Future Improvements
+
+- Docker containerization
+- Role-based access control (RBAC)
+- Additional enterprise connectors (Salesforce, Workday, Jira)
+- Real-time synchronization using webhooks
+- Advanced analytics dashboard
+- Kubernetes deployment
+
+---
+
+# Author
+
+**Muhammad Hamza**
+
+AI Undergraduate | Machine Learning | Full-Stack AI Developer
+
+LinkedIn:
+https://www.linkedin.com/in/muhammad-hamza-5663a128a
+
+
+---
+
+## Live Demo
+
+https://sync-guard-mu.vercel.app/
